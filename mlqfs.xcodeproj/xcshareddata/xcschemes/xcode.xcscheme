@@ -15,8 +15,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "D45FB07D23625AB5004E7E53"
-               BuildableName = "mlqfs"
-               BlueprintName = "mlqfs"
+               BuildableName = "xcode"
+               BlueprintName = "xcode"
                ReferencedContainer = "container:mlqfs.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -46,8 +46,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "D45FB07D23625AB5004E7E53"
-            BuildableName = "mlqfs"
-            BlueprintName = "mlqfs"
+            BuildableName = "xcode"
+            BlueprintName = "xcode"
             ReferencedContainer = "container:mlqfs.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -69,8 +69,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "D45FB07D23625AB5004E7E53"
-            BuildableName = "mlqfs"
-            BlueprintName = "mlqfs"
+            BuildableName = "xcode"
+            BlueprintName = "xcode"
             ReferencedContainer = "container:mlqfs.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

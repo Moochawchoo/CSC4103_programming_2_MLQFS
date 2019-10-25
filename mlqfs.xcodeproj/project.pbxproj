@@ -11,6 +11,16 @@
 		D45FB08A23625B11004E7E53 /* prioque.c in Sources */ = {isa = PBXBuildFile; fileRef = D45FB08923625B11004E7E53 /* prioque.c */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		D4E9E60D2362AAA600CC4392 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D45FB07623625AB5004E7E53 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D4E9E6092362A9F200CC4392;
+			remoteInfo = gcc;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		D45FB07C23625AB5004E7E53 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -24,7 +34,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		D45FB07E23625AB5004E7E53 /* mlqfs */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = mlqfs; sourceTree = BUILT_PRODUCTS_DIR; };
+		D45FB07E23625AB5004E7E53 /* xcode */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = xcode; sourceTree = BUILT_PRODUCTS_DIR; };
 		D45FB08123625AB5004E7E53 /* mlqfs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mlqfs.c; sourceTree = "<group>"; };
 		D45FB08823625B11004E7E53 /* prioque.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = prioque.h; sourceTree = "<group>"; };
 		D45FB08923625B11004E7E53 /* prioque.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = prioque.c; sourceTree = "<group>"; };
@@ -55,7 +65,7 @@
 		D45FB07F23625AB5004E7E53 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				D45FB07E23625AB5004E7E53 /* mlqfs */,
+				D45FB07E23625AB5004E7E53 /* xcode */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -83,10 +93,27 @@
 		};
 /* End PBXGroup section */
 
+/* Begin PBXLegacyTarget section */
+		D4E9E6092362A9F200CC4392 /* gcc */ = {
+			isa = PBXLegacyTarget;
+			buildArgumentsString = "-o mlqfs -Iprioque/ prioque/prioque.c mlqfs.c";
+			buildConfigurationList = D4E9E60A2362A9F200CC4392 /* Build configuration list for PBXLegacyTarget "gcc" */;
+			buildPhases = (
+			);
+			buildToolPath = gcc;
+			buildWorkingDirectory = "/Users/piergabory/Developer/LSU/CSC4103 Operating Systems/mlqfs/mlqfs";
+			dependencies = (
+			);
+			name = gcc;
+			passBuildSettingsInEnvironment = 1;
+			productName = gcc;
+		};
+/* End PBXLegacyTarget section */
+
 /* Begin PBXNativeTarget section */
-		D45FB07D23625AB5004E7E53 /* mlqfs */ = {
+		D45FB07D23625AB5004E7E53 /* xcode */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D45FB08523625AB5004E7E53 /* Build configuration list for PBXNativeTarget "mlqfs" */;
+			buildConfigurationList = D45FB08523625AB5004E7E53 /* Build configuration list for PBXNativeTarget "xcode" */;
 			buildPhases = (
 				D45FB07A23625AB5004E7E53 /* Sources */,
 				D45FB07B23625AB5004E7E53 /* Frameworks */,
@@ -95,10 +122,11 @@
 			buildRules = (
 			);
 			dependencies = (
+				D4E9E60E2362AAA600CC4392 /* PBXTargetDependency */,
 			);
-			name = mlqfs;
+			name = xcode;
 			productName = mlqfs;
-			productReference = D45FB07E23625AB5004E7E53 /* mlqfs */;
+			productReference = D45FB07E23625AB5004E7E53 /* xcode */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -111,6 +139,9 @@
 				ORGANIZATIONNAME = piergabory;
 				TargetAttributes = {
 					D45FB07D23625AB5004E7E53 = {
+						CreatedOnToolsVersion = 11.1;
+					};
+					D4E9E6092362A9F200CC4392 = {
 						CreatedOnToolsVersion = 11.1;
 					};
 				};
@@ -128,7 +159,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				D45FB07D23625AB5004E7E53 /* mlqfs */,
+				D45FB07D23625AB5004E7E53 /* xcode */,
+				D4E9E6092362A9F200CC4392 /* gcc */,
 			);
 		};
 /* End PBXProject section */
@@ -144,6 +176,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D4E9E60E2362AAA600CC4392 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D4E9E6092362A9F200CC4392 /* gcc */;
+			targetProxy = D4E9E60D2362AAA600CC4392 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		D45FB08323625AB5004E7E53 /* Debug */ = {
@@ -275,6 +315,33 @@
 			};
 			name = Release;
 		};
+		D4E9E60B2362A9F200CC4392 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEBUGGING_SYMBOLS = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = GJ3CB2MZ43;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		D4E9E60C2362A9F200CC4392 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = GJ3CB2MZ43;
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -287,11 +354,20 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D45FB08523625AB5004E7E53 /* Build configuration list for PBXNativeTarget "mlqfs" */ = {
+		D45FB08523625AB5004E7E53 /* Build configuration list for PBXNativeTarget "xcode" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D45FB08623625AB5004E7E53 /* Debug */,
 				D45FB08723625AB5004E7E53 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D4E9E60A2362A9F200CC4392 /* Build configuration list for PBXLegacyTarget "gcc" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D4E9E60B2362A9F200CC4392 /* Debug */,
+				D4E9E60C2362A9F200CC4392 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
