@@ -15,28 +15,55 @@ static const int QUANTUM[3] = { 10, 30, 100 };
 static const int DEMOTION[3] = { 1, 2, 0 };
 static const int PROMOTION[3] = { 0, 2, 1 };
 
-static Queue run;
-static Queue io;
-static Queue pending;
-static Queue report;
+static Queue run;       // Processes waiting for CPU time.
+static Queue io;        // Processes in IO. 
+static Queue pending;   // Processes waiting for their arrival time.
+static Queue report;    // Terminated processes buffer, used in the report output.
 
-static Process null = { .pid = 0, .total_cpu_usage = 0 };
+// Define the null process used in the report output.
+static Process null = { .pid = 0, .total_cpu_usage = 0 }; 
 
+// Clock counter
 static unsigned int mlqfs_clock = 0;
+
+// Stream output
 static FILE* output = NULL;
 
+
+/**
+ * @brief compare two processes struct
+ * Required generic comparison function for the Queue struct,
+ * used to check for duplicates in the queue.
+ * Duplicates processes are identified by PID
+ *
+ * @params lhs, rhs void pointers castable to Process pointers.
+ * @returns 1 if the processes are different 0 if they're the same.
+ */
 int process_compare(void* lhs, void* rhs) {
     Process *left = lhs;
     Process *right = rhs;
     return left->pid != right->pid;
 }
 
+
+/**
+ * @brief MLQFScheduler initializer
+ * call initializer function for each queues 
+ * representing the state of the scheduler
+ */
 void init_scheduler() {
     init_queue(&run, sizeof(Process), FALSE, process_compare, FALSE);
     init_queue(&io, sizeof(Process), FALSE, process_compare, FALSE);
     init_queue(&report, sizeof(Process), FALSE, process_compare, FALSE);
 }
 
+
+/**
+ * @brief Shutdown the MLQFScheduler
+ * free the memory for all the scheduler state queues.
+ * saves the null process logs.
+ * logs the shutdown time.
+ */
 void shutdown_scheduler() {
     destroy_queue(&run);
     destroy_queue(&io);
@@ -50,6 +77,12 @@ void shutdown_scheduler() {
     fprintf(output, "Scheduler shutdown at time %u.\n", mlqfs_clock);
 }
 
+
+/**
+ * @brief Initialise Process
+ * Sets all the propreties of a process struct to their default values.
+ * Initialise the processe's behavior queue.
+ */
 void init_process(Process *process) {
     process->pid = 0;
     process->priority_cache = 0;
@@ -65,11 +98,26 @@ void init_process(Process *process) {
 }
 
 
+/**
+ * @brief Check the activity of the MLQFScheduler
+ * the scheduler is considered active as long as there 
+ * is an active process running, waiting io, or waiting to start.
+ * @return boolean
+ */
 int scheduler_is_active() {
     return (queue_length(&run) > 0) || (queue_length(&io) > 0) || (queue_length(&pending) > 0);
 }
 
 
+/**
+ * @brief Load process descriptions
+ * Parses a character stream into a queue of Processes.
+ * A process is describe with 5 space separated integers: 
+ * "[Arrival_time] [PID] [cpu_time] [io_time] [repeats]"
+ * pushes all the new processes in the pending queue.
+ *
+ * @param input stream containing the processes descriptions.
+ */
 void load_process_descriptions(FILE* input) {
     Process process;
     Behaviour behaviour;
