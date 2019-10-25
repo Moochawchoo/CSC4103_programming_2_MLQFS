@@ -16,10 +16,11 @@ typedef struct Process {
     int pid;
     int priority_cache;
     Queue behaviours;
-    int units;
-    int progress;
-    int promotion;
-    int demotion;
+    unsigned int units;
+    unsigned int progress;
+    unsigned int promotion;
+    unsigned int demotion;
+    unsigned int total_cpu_usage;
 } Process;
 
 typedef struct Behaviour {
