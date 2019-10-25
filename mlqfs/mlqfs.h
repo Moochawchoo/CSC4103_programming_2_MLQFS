@@ -16,7 +16,9 @@ typedef struct Process {
     int pid;
     int priority_cache;
     Queue behaviours;
+    unsigned int arrival_time;
     unsigned int units;
+    unsigned int quantas;
     unsigned int progress;
     unsigned int promotion;
     unsigned int demotion;

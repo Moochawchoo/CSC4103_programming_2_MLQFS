@@ -20,13 +20,10 @@ static Queue io;
 static Queue pending;
 static Queue report;
 
-static Process null = {
-    .pid = 0,
-    .total_cpu_usage = 0
-};
+static Process null = { .pid = 0, .total_cpu_usage = 0 };
 
 static unsigned int mlqfs_clock = 0;
-static FILE* output;
+static FILE* output = NULL;
 
 int process_compare(void* lhs, void* rhs) {
     Process *left = lhs;
@@ -44,16 +41,26 @@ void shutdown_scheduler() {
     destroy_queue(&run);
     destroy_queue(&io);
     destroy_queue(&run);
-    add_to_queue(&report, &null, null.total_cpu_usage);
+
+    // add NULL process to the record if it was ever spawned.
+    if (null.total_cpu_usage > 0) {
+        add_to_queue(&report, &null, null.total_cpu_usage);
+    }
+
     fprintf(output, "Scheduler shutdown at time %u.\n", mlqfs_clock);
 }
 
 void init_process(Process *process) {
     process->pid = 0;
+    process->priority_cache = 0;
+    process->arrival_time = 0;
     process->units = 0;
+    process->quantas = 0;
     process->progress = 0;
     process->promotion = 0;
     process->demotion = 0;
+    process->total_cpu_usage = 0;
+
     init_queue(&process->behaviours, sizeof(Behaviour), TRUE, NULL, TRUE);
 }
 
@@ -64,25 +71,30 @@ int scheduler_is_active() {
 
 
 void load_process_descriptions(FILE* input) {
-    unsigned int arrival;
-    int previous_pid = 0;
-    Behaviour behaviour;
     Process process;
+    Behaviour behaviour;
+    int pid = 0, is_first = TRUE;
+    unsigned int arrival;
 
-    init_queue(&pending, sizeof(Process), FALSE, process_compare, FALSE);
     init_process(&process);
+    init_queue(&pending, sizeof(Process), FALSE, process_compare, FALSE);
+    arrival = 0;
 
     while (fscanf(input, "%u", &arrival) != EOF) {
-        fscanf(input, "%d %u %u %u\n", &process.pid, &behaviour.cpu_time, &behaviour.io_time, &behaviour.repeats);
+        fscanf(input, "%d %d %d %d", &pid, &behaviour.cpu_time, &behaviour.io_time, &behaviour.repeats);
 
-        if (previous_pid == process.pid) {
-            add_to_queue(&pending, &process, arrival);
+        if (!is_first && process.pid != pid) {
+            add_to_queue(&pending, &process, process.arrival_time);
             init_process(&process);
         }
+
+        process.pid = pid;
+        process.arrival_time = arrival;
+        is_first = FALSE;
         add_to_queue(&process.behaviours, &behaviour, 1);
-        previous_pid = process.pid;
     }
-    add_to_queue(&pending, &process, arrival);
+
+    add_to_queue(&pending, &process, process.arrival_time);
 }
 
 
@@ -90,13 +102,13 @@ void queue_new_processes() {
     Process process;
 
     // schedule pending processes.
-    while (queue_length(&pending) && current_priority(&pending) >= mlqfs_clock) {
+    while (queue_length(&pending) > 0 && current_priority(&pending) <= mlqfs_clock) {
         remove_from_front(&pending, &process);
         add_to_queue(&run, &process, MAX_PRIORITY);
     }
 
     // return io processes to cpu.
-    while (queue_length(&io) && current_priority(&io) >= mlqfs_clock) {
+    while (queue_length(&io) > 0 && current_priority(&io) <= mlqfs_clock) {
         remove_from_front(&io, &process);
         add_to_queue(&run, &process, process.priority_cache);
     }
@@ -123,6 +135,7 @@ void send_process_to_io() {
 
     process.progress ++;
     process.units = 0;
+    process.quantas = 0;
 
     add_to_queue(&io, &process, mlqfs_clock + behaviour.io_time);
     fprintf(output, "I/O:\tProcess %d blocked for I/O at time %u.\n", process.pid, mlqfs_clock);
@@ -135,6 +148,7 @@ void halt_process() {
     remove_from_front(&run, &process);
     process.demotion ++;
     process.promotion = 0;
+    process.quantas = 0;
 
     if (process.demotion >= DEMOTION[priority]) {
         process.demotion = 0;
@@ -155,19 +169,25 @@ void terminate_process() {
 
 
 void schedule_processes() {
-    if (queue_length(&run) == 0) {
-        // nothing to schedule.
-        return;
-    }
-
     Process process;
     Behaviour behaviour;
-    int priority, rescheduling = TRUE;
+    int priority;
 
     // looks at the top process, and while it's not eligible for a cpu unit, it will be rescheduled.
-    if (rescheduling) {
+    while (queue_length(&run) > 0) {
         peek_at_current(&run, &process);
         priority = current_priority(&run);
+        
+        // Process should be terminated
+        if (queue_length(&process.behaviours) == 0) {
+            // if ready to terminate, let the process run one more cpu cycle.
+            if (process.units < 1) { return; }
+
+            // else remove the process and try with the next one.
+            terminate_process();
+            continue;
+        }
+        
         peek_at_current(&process.behaviours, &behaviour);
 
         // Process has finished its current behaviour
@@ -177,30 +197,26 @@ void schedule_processes() {
             update_current(&run, &process);
         }
 
-        // Process should be terminated
-        if (queue_length(&process.behaviours) == 0 && process.units >= 1) {
-            terminate_process();
-            return;
-        }
-
-        peek_at_current(&process.behaviours, &behaviour);
 
         // Process has finished its burst
-        if (process.units >= behaviour.cpu_time) {
+        else if (process.units >= behaviour.cpu_time) {
             send_process_to_io();
         }
 
+
         // Process has consumed its quantas
-        else if (process.units > 0 && process.units % QUANTUM[priority] == 0) {
+        else if (process.quantas >= QUANTUM[priority]) {
             halt_process();
         }
 
+
+        // Process is elegible for cpu access.
         else {
             // process is starting a new cpu cycle
             if (process.units == 0) {
                 fprintf(output, "RUN:\tProcess %d started execution from level %d at time %u; wants to execute for %u ticks.\n", process.pid, priority, mlqfs_clock, behaviour.cpu_time);
             }
-            rescheduling = FALSE;
+            return;
         }
     }
 }
@@ -217,6 +233,7 @@ int run_top_process() {
     peek_at_current(&run, &current);
 
     current.units ++;
+    current.quantas ++;
     current.total_cpu_usage ++;
 
     update_current(&run, &current);
@@ -231,8 +248,8 @@ void print_report() {
         fprintf(output, "Process ");
         remove_from_front(&report, &process);
         switch (process.pid) {
-        case 0: fprintf(output, "<<null>> "); break;
-        default: fprintf(output, "%d ", process.pid); break;
+            case 0: fprintf(output, "<<null>> "); break;
+            default: fprintf(output, "%d ", process.pid); break;
         }
         fprintf(output, ":\t%d time units.\n", process.total_cpu_usage);
     }
@@ -258,10 +275,11 @@ int main(int argc, const char * argv[]) {
 
     init_scheduler();
 
+    mlqfs_clock = 0;
     while (scheduler_is_active()) {
         queue_new_processes();
-        run_top_process();
         schedule_processes();
+        run_top_process();
         mlqfs_clock ++;
     }
 
