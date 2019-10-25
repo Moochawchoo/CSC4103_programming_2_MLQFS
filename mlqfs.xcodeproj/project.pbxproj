@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		D45FB08223625AB5004E7E53 /* mlqfs.c in Sources */ = {isa = PBXBuildFile; fileRef = D45FB08123625AB5004E7E53 /* mlqfs.c */; };
 		D45FB08A23625B11004E7E53 /* prioque.c in Sources */ = {isa = PBXBuildFile; fileRef = D45FB08923625B11004E7E53 /* prioque.c */; };
-		D4E9E6082362A3CE00CC4392 /* makefile in Sources */ = {isa = PBXBuildFile; fileRef = D4E9E6072362A3CE00CC4392 /* makefile */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -32,7 +31,6 @@
 		D45FB08C23625BDA004E7E53 /* mlqfs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mlqfs.h; sourceTree = "<group>"; };
 		D45FB08D23626669004E7E53 /* processes.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = processes.txt; sourceTree = "<group>"; };
 		D4E9E6042362A19100CC4392 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		D4E9E6072362A3CE00CC4392 /* makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = makefile; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,7 +67,6 @@
 				D45FB08123625AB5004E7E53 /* mlqfs.c */,
 				D45FB08C23625BDA004E7E53 /* mlqfs.h */,
 				D45FB08D23626669004E7E53 /* processes.txt */,
-				D4E9E6072362A3CE00CC4392 /* makefile */,
 				D4E9E6042362A19100CC4392 /* README.md */,
 			);
 			path = mlqfs;
@@ -142,7 +139,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				D45FB08223625AB5004E7E53 /* mlqfs.c in Sources */,
-				D4E9E6082362A3CE00CC4392 /* makefile in Sources */,
 				D45FB08A23625B11004E7E53 /* prioque.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

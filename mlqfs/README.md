@@ -3,19 +3,14 @@ CSC 4103 Operating Systems
 Programming Assignment #2
 LSU FALL 2019
 
-Pierre Gabory
+**Pierre Gabory**
 
-- Language: C
+
 
 ## Compile
-
-- using make:
+- Language: C 
 `
-$ make
-`
-- one-command 
-`
-$ gcc -o -Iprioque/ mlqfs prioque.c mlqfs.c
+$ gcc -o mlqfs -Iprioque/ prioque/prioque.c mlqfs.c
 `
 
 ## Run
