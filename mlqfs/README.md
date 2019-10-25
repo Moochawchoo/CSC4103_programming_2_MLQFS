@@ -5,8 +5,6 @@ LSU FALL 2019
 
 **Pierre Gabory**
 
-
-
 ## Compile
 - Language: C 
 `
@@ -23,6 +21,3 @@ Tested examples:
 `$ ./mlqfs < processes.txt`
 `$ cat processes.txt | ./mlqfs`
 `$ ./mlqfs processes.txt out.txt`
-
-
-
