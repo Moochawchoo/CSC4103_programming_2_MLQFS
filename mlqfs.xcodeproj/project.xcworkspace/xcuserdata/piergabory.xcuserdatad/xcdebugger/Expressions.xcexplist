@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VariablesViewState
+   version = "1.0">
+   <ContextStates>
+      <ContextState
+         contextName = "add_to_queue:prioque.c">
+      </ContextState>
+      <ContextState
+         contextName = "process_compare:mlqfs.c">
+      </ContextState>
+      <ContextState
+         contextName = "main:mlqfs.c">
+         <PersistentStrings>
+            <PersistentString
+               value = "run">
+            </PersistentString>
+            <PersistentString
+               value = "pending">
+            </PersistentString>
+            <PersistentString
+               value = "io">
+            </PersistentString>
+            <PersistentString
+               value = "mlqfs_clock">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
+         contextName = "load_process_descriptions:mlqfs.c">
+      </ContextState>
+   </ContextStates>
+</VariablesViewState>
