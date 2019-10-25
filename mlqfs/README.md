@@ -1,0 +1,33 @@
+#  MLQFS
+CSC 4103 Operating Systems 
+Programming Assignment #2
+LSU FALL 2019
+
+Pierre Gabory
+
+- Language: C
+
+## Compile
+
+- using make:
+`
+$ make
+`
+- one-command 
+`
+$ gcc -o -Iprioque/ mlqfs prioque.c mlqfs.c
+`
+
+## Run
+
+- `$ ./mlqfs [inputfile] [outputfile]`
+- `$ ./mlqfs [inputfile]`, outputs in stdout
+- `$ ./mlqfs`, uses standard io.
+
+Tested examples:
+`$ ./mlqfs < processes.txt`
+`$ cat processes.txt | ./mlqfs`
+`$ ./mlqfs processes.txt out.txt`
+
+
+

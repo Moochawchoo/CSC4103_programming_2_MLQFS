@@ -16,7 +16,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "210"
             endingLineNumber = "210"
-            landmarkName = "run_top_process()"
+            landmarkName = "schedule_processes()"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>

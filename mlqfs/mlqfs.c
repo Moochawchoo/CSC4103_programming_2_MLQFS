@@ -268,7 +268,7 @@ int main(int argc, const char * argv[]) {
     }
 
     if (argc >= 3) {
-        output = fopen("mlqfs_report.txt", "w");
+        output = fopen(argv[2], "w");
     } else {
         output = stdout;
     }
