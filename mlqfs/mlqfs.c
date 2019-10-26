@@ -36,7 +36,8 @@ static FILE* output = NULL;
  * used to check for duplicates in the queue.
  * Duplicates processes are identified by PID
  *
- * @params lhs, rhs void pointers castable to Process pointers.
+ * @param lhs void pointer castable to Process pointer.
+ * @param rhs void pointer castable to Process pointer.
  * @returns 1 if the processes are different 0 if they're the same.
  */
 int process_compare(void* lhs, void* rhs) {
@@ -48,7 +49,7 @@ int process_compare(void* lhs, void* rhs) {
 
 /**
  * @brief MLQFScheduler initializer
- * call initializer function for each queues 
+ * call initializer function for each queues
  * representing the state of the scheduler
  */
 void init_scheduler() {
@@ -67,7 +68,7 @@ void init_scheduler() {
 void shutdown_scheduler() {
     destroy_queue(&run);
     destroy_queue(&io);
-    destroy_queue(&run);
+    destroy_queue(&pending);
 
     // add NULL process to the record if it was ever spawned.
     if (null.total_cpu_usage > 0) {
@@ -100,7 +101,7 @@ void init_process(Process *process) {
 
 /**
  * @brief Check the activity of the MLQFScheduler
- * the scheduler is considered active as long as there 
+ * the scheduler is considered active as long as there
  * is an active process running, waiting io, or waiting to start.
  * @return boolean
  */
@@ -112,7 +113,7 @@ int scheduler_is_active() {
 /**
  * @brief Load process descriptions
  * Parses a character stream into a queue of Processes.
- * A process is describe with 5 space separated integers: 
+ * A process is describe with 5 space separated integers:
  * "[Arrival_time] [PID] [cpu_time] [io_time] [repeats]"
  * pushes all the new processes in the pending queue.
  *
@@ -151,7 +152,7 @@ void load_process_descriptions(FILE* input) {
  * At current clock time, pull all the processes from the pending and
  * io queue and push them in the run queue.
  * New processes are set with the highest priority by default.
- * Processes leaving io return to their previous priority stored in 
+ * Processes leaving io return to their previous priority stored in
  * the priority_cache property.
  */
 void queue_new_processes() {
@@ -175,7 +176,7 @@ void queue_new_processes() {
  * @brief Send top process to io
  * Remove the current process form the run queue and pushes it in the io queue.
  * Resets quanta and unit counters, and increment progress and promotion counters.
- * If the promotion counter reaches the priority's Promotion ceiling, the process 
+ * If the promotion counter reaches the priority's Promotion ceiling, the process
  * is promoted to the next highest priority.
  * Print the IO log in the output stream.
  */
@@ -247,6 +248,9 @@ void terminate_process() {
 }
 
 
+/**
+ * @brief Updates the run queue so the top process is the one who deserves CPU access the most.
+ */
 void schedule_processes() {
     Process process;
     Behaviour behaviour;
@@ -292,8 +296,9 @@ void schedule_processes() {
         // Process is elegible for cpu access.
         else {
             // process is starting a new cpu cycle
-            if (process.units == 0) {
-                fprintf(output, "RUN:\tProcess %d started execution from level %d at time %u; wants to execute for %u ticks.\n", process.pid, priority, mlqfs_clock, behaviour.cpu_time);
+            if (process.quantas == 0) {
+                int time_left = behaviour.cpu_time - process.units;
+                fprintf(output, "RUN:\tProcess %d started execution from level %d at time %u; wants to execute for %u ticks.\n", process.pid, priority, mlqfs_clock, time_left);
             }
             return;
         }
@@ -301,25 +306,36 @@ void schedule_processes() {
 }
 
 
-int run_top_process() {
+/**
+ * @brief simulate the top process cpu access.
+ * If no process are scheduled, will run the NULL process.
+ * Increments unit, quanta, and total cpu usage counters.
+ */
+void run_top_process() {
     if (queue_length(&run) == 0) {
         // Run null process
         null.total_cpu_usage ++;
-        return 0;
     }
 
-    Process current;
-    peek_at_current(&run, &current);
+    else {
+        // get process
+        Process current;
+        peek_at_current(&run, &current);
 
-    current.units ++;
-    current.quantas ++;
-    current.total_cpu_usage ++;
+        // Update counters
+        current.units ++;
+        current.quantas ++;
+        current.total_cpu_usage ++;
 
-    update_current(&run, &current);
-    return current.pid;
+        // save changes
+        update_current(&run, &current);
+    }
 }
 
 
+/**
+ * @brief prints formated output of total cpu usage of every processes, NULL inluded.
+ */
 void print_report() {
     Process process;
     fprintf(output, "\nTotal CPU usage for all processes scheduled:\n\n");
@@ -352,6 +368,9 @@ int main(int argc, const char * argv[]) {
         output = stdout;
     }
 
+
+
+    // --- BEGIN SCHEDULER ---
     init_scheduler();
 
     mlqfs_clock = 0;
@@ -363,10 +382,11 @@ int main(int argc, const char * argv[]) {
     }
 
     shutdown_scheduler();
+    // --- END SCHEDULER ---
+
     print_report();
 
     if (argc >= 3) { fclose(output); }
-
     return 0;
 }
 
