@@ -260,21 +260,17 @@ void schedule_processes() {
     while (queue_length(&run) > 0) {
         peek_at_current(&run, &process);
         priority = current_priority(&run);
-        
-        // Process should be terminated
-        if (queue_length(&process.behaviours) == 0) {
-            // if ready to terminate, let the process run one more cpu cycle.
-            if (process.units < 1) { return; }
-
-            // else remove the process and try with the next one.
-            terminate_process();
-            continue;
-        }
-        
         peek_at_current(&process.behaviours, &behaviour);
 
-        // Process has finished its current behaviour
-        if (process.progress >= behaviour.repeats) {
+        // Process should be terminated
+        if (queue_length(&process.behaviours) == 1 && process.progress == behaviour.repeats && process.units >= behaviour.cpu_time) {
+            terminate_process();
+        }
+
+
+        // Process finished its current behaviour description.
+        // Ignore if process is on its last behaviour
+        else if (queue_length(&process.behaviours) > 1 && process.progress >= behaviour.repeats) {
             remove_from_front(&process.behaviours, &behaviour);
             process.progress = 0;
             update_current(&run, &process);
