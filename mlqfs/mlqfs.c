@@ -1,10 +1,10 @@
-//
-//  main.c
-//  mlqfs
-//
-//  Created by Pierre Gabory on 24/10/2019.
-//  Copyright © 2019 piergabory. All rights reserved.
-//
+/**
+ *  main.c
+ *  mlqfs
+ *
+ *  Created by Pierre Gabory on 24/10/2019.
+ *  Copyright © 2019 piergabory. All rights reserved.
+ */
 
 #include "mlqfs.h"
 
@@ -95,7 +95,7 @@ void init_process(Process *process) {
     process->demotion = 0;
     process->total_cpu_usage = 0;
 
-    init_queue(&process->behaviours, sizeof(Behaviour), TRUE, NULL, TRUE);
+    init_queue(&process->behaviours, sizeof(Behaviour), TRUE, NULL, FALSE);
 }
 
 
@@ -162,12 +162,14 @@ void queue_new_processes() {
     while (queue_length(&pending) > 0 && current_priority(&pending) <= mlqfs_clock) {
         remove_from_front(&pending, &process);
         add_to_queue(&run, &process, MAX_PRIORITY);
+        fprintf(output, "CREATE:\tProcess %d entered the ready queue at time %d.\n", process.pid, mlqfs_clock);
     }
 
     // return io processes to cpu.
     while (queue_length(&io) > 0 && current_priority(&io) <= mlqfs_clock) {
         remove_from_front(&io, &process);
         add_to_queue(&run, &process, process.priority_cache);
+        fprintf(output, "QUEUED:\tProcess %d queued at level %d at time %u.\n", process.pid, process.priority_cache + 1, mlqfs_clock);
     }
 }
 
@@ -230,7 +232,7 @@ void halt_process() {
     }
 
     add_to_queue(&run, &process, priority);
-    fprintf(output, "QUEUED:\tProcess %d queued at level %d at time %u.\n", process.pid, priority, mlqfs_clock);
+    fprintf(output, "QUEUED:\tProcess %d queued at level %d at time %u.\n", process.pid, priority + 1, mlqfs_clock);
 }
 
 
@@ -263,13 +265,14 @@ void schedule_processes() {
         peek_at_current(&process.behaviours, &behaviour);
 
         // Process should be terminated
+        // (process is on its last cycle and as finished the extra CPU run.
         if (queue_length(&process.behaviours) == 1 && process.progress == behaviour.repeats && process.units >= behaviour.cpu_time) {
             terminate_process();
         }
 
 
         // Process finished its current behaviour description.
-        // Ignore if process is on its last behaviour
+        // Ignored if process is on its last behaviour
         else if (queue_length(&process.behaviours) > 1 && process.progress >= behaviour.repeats) {
             remove_from_front(&process.behaviours, &behaviour);
             process.progress = 0;
@@ -294,7 +297,7 @@ void schedule_processes() {
             // process is starting a new cpu cycle
             if (process.quantas == 0) {
                 int time_left = behaviour.cpu_time - process.units;
-                fprintf(output, "RUN:\tProcess %d started execution from level %d at time %u; wants to execute for %u ticks.\n", process.pid, priority, mlqfs_clock, time_left);
+                fprintf(output, "RUN:\tProcess %d started execution from level %d at time %u; wants to execute for %u ticks.\n", process.pid, priority + 1, mlqfs_clock, time_left);
             }
             return;
         }
@@ -385,5 +388,3 @@ int main(int argc, const char * argv[]) {
     if (argc >= 3) { fclose(output); }
     return 0;
 }
-
-
