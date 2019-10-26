@@ -146,6 +146,14 @@ void load_process_descriptions(FILE* input) {
 }
 
 
+/**
+ * @brief Queue processes to CPU
+ * At current clock time, pull all the processes from the pending and
+ * io queue and push them in the run queue.
+ * New processes are set with the highest priority by default.
+ * Processes leaving io return to their previous priority stored in 
+ * the priority_cache property.
+ */
 void queue_new_processes() {
     Process process;
 
@@ -163,6 +171,14 @@ void queue_new_processes() {
 }
 
 
+/**
+ * @brief Send top process to io
+ * Remove the current process form the run queue and pushes it in the io queue.
+ * Resets quanta and unit counters, and increment progress and promotion counters.
+ * If the promotion counter reaches the priority's Promotion ceiling, the process 
+ * is promoted to the next highest priority.
+ * Print the IO log in the output stream.
+ */
 void send_process_to_io() {
     Process process;
     Behaviour behaviour;
@@ -173,6 +189,7 @@ void send_process_to_io() {
     process.promotion ++;
     process.demotion = 0;
 
+    // promote process
     if (process.promotion >= PROMOTION[priority]) {
         process.promotion = 0;
         if (priority != MAX_PRIORITY) { priority --; }
@@ -190,6 +207,13 @@ void send_process_to_io() {
 }
 
 
+/**
+ * @brief Stop the currently running process.
+ * Called when the process runs out of quantum.
+ * Stops the currently run process and put it at the end of the queue.
+ * the demotion counter is incremented, and the process is demoted a priority
+ * if it reaches the priority's demotion ceiling.
+ */
 void halt_process() {
     Process process;
     int priority = current_priority(&run);
@@ -198,6 +222,7 @@ void halt_process() {
     process.promotion = 0;
     process.quantas = 0;
 
+    // demote process
     if (process.demotion >= DEMOTION[priority]) {
         process.demotion = 0;
         if (priority != MIN_PRIORITY) { priority ++; }
@@ -207,6 +232,12 @@ void halt_process() {
     fprintf(output, "QUEUED:\tProcess %d queued at level %d at time %u.\n", process.pid, priority, mlqfs_clock);
 }
 
+
+/**
+ * @brief Terminate currently running process
+ * called when the current process has finished all its cpu cycles.
+ * Removes the process from the run queue and free the behaviour queue.
+ */
 void terminate_process() {
     Process process;
     remove_from_front(&run, &process);
