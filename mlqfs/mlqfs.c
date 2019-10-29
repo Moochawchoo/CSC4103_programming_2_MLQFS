@@ -89,7 +89,7 @@ void init_process(Process *process) {
     process->priority_cache = 0;
     process->arrival_time = 0;
     process->units = 0;
-    process->quantas = 0;
+    process->quanta = 0;
     process->progress = 0;
     process->promotion = 0;
     process->demotion = 0;
@@ -203,7 +203,7 @@ void send_process_to_io() {
 
     process.progress ++;
     process.units = 0;
-    process.quantas = 0;
+    process.quanta = 0;
 
     add_to_queue(&io, &process, mlqfs_clock + behaviour.io_time);
     fprintf(output, "I/O:\tProcess %d blocked for I/O at time %u.\n", process.pid, mlqfs_clock);
@@ -223,7 +223,7 @@ void halt_process() {
     remove_from_front(&run, &process);
     process.demotion ++;
     process.promotion = 0;
-    process.quantas = 0;
+    process.quanta = 0;
 
     // demote process
     if (process.demotion >= DEMOTION[priority]) {
@@ -287,7 +287,7 @@ void schedule_processes() {
 
 
         // Process has consumed its quantas
-        else if (process.quantas >= QUANTUM[priority]) {
+        else if (process.quanta >= QUANTUM[priority]) {
             halt_process();
         }
 
@@ -295,7 +295,7 @@ void schedule_processes() {
         // Process is elegible for cpu access.
         else {
             // process is starting a new cpu cycle
-            if (process.quantas == 0) {
+            if (process.quanta == 0) {
                 int time_left = behaviour.cpu_time - process.units;
                 fprintf(output, "RUN:\tProcess %d started execution from level %d at time %u; wants to execute for %u ticks.\n", process.pid, priority + 1, mlqfs_clock, time_left);
             }
@@ -323,7 +323,7 @@ void run_top_process() {
 
         // Update counters
         current.units ++;
-        current.quantas ++;
+        current.quanta ++;
         current.total_cpu_usage ++;
 
         // save changes
