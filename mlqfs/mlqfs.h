@@ -68,8 +68,8 @@ int scheduler_is_active(void);
 
 /**
  * @brief Queue processes to CPU
- * At current clock time, pull all the processes from the pending and
- * io queue and push them in the run queue.
+ * At current clock time, pull all the processes from the arrival and
+ * io queue and push them in the ready queue.
  * New processes are set with the highest priority by default.
  * Processes leaving io return to their previous priority stored in
  * the priority_cache property.
@@ -77,7 +77,7 @@ int scheduler_is_active(void);
 void queue_new_processes(void);
 
 /**
- * @brief Updates the run queue so the top process is the one who deserves CPU access the most.
+ * @brief Updates the ready queue so the top process is the one who deserves CPU access the most.
  */
 void schedule_processes(void);
 

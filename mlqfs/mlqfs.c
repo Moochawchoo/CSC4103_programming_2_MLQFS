@@ -11,14 +11,14 @@
 #define MAX_PRIORITY 0
 #define MIN_PRIORITY 2
 
-static const int QUANTUM[3] = { 10, 30, 100 };
-static const int DEMOTION[3] = { 1, 2, 0 };
-static const int PROMOTION[3] = { 0, 2, 1 };
+static const int QUANTUM_THRESHOLD[3] = { 10, 30, 100 };
+static const int DEMOTION_THRESHOLD[3] = { 1, 2, 0 };
+static const int PROMOTION_THRESHOLD[3] = { 0, 2, 1 };
 
-static Queue run;       // Processes waiting for CPU time.
-static Queue io;        // Processes in IO. 
-static Queue pending;   // Processes waiting for their arrival time.
-static Queue report;    // Terminated processes buffer, used in the report output.
+static Queue ready_queue;       // Processes waiting for CPU time.
+static Queue io_queue;        // Processes in IO. 
+static Queue arrival_queue;   // Processes waiting for their arrival time.
+static Queue logs;    // Terminated processes buffer, used in the report output.
 
 // Define the null process used in the report output.
 static Process null = { .pid = 0, .total_cpu_usage = 0 }; 
@@ -53,9 +53,9 @@ int process_compare(void* lhs, void* rhs) {
  * representing the state of the scheduler
  */
 void init_scheduler() {
-    init_queue(&run, sizeof(Process), FALSE, process_compare, FALSE);
-    init_queue(&io, sizeof(Process), FALSE, process_compare, FALSE);
-    init_queue(&report, sizeof(Process), FALSE, process_compare, FALSE);
+    init_queue(&ready_queue, sizeof(Process), FALSE, process_compare, FALSE);
+    init_queue(&io_queue, sizeof(Process), FALSE, process_compare, FALSE);
+    init_queue(&logs, sizeof(Process), FALSE, process_compare, FALSE);
 }
 
 
@@ -66,13 +66,13 @@ void init_scheduler() {
  * logs the shutdown time.
  */
 void shutdown_scheduler() {
-    destroy_queue(&run);
-    destroy_queue(&io);
-    destroy_queue(&pending);
+    destroy_queue(&ready_queue);
+    destroy_queue(&io_queue);
+    destroy_queue(&arrival_queue);
 
     // add NULL process to the record if it was ever spawned.
     if (null.total_cpu_usage > 0) {
-        add_to_queue(&report, &null, null.total_cpu_usage);
+        add_to_queue(&logs, &null, null.total_cpu_usage);
     }
 
     fprintf(output, "Scheduler shutdown at time %u.\n", mlqfs_clock);
@@ -106,7 +106,7 @@ void init_process(Process *process) {
  * @return boolean
  */
 int scheduler_is_active() {
-    return (queue_length(&run) > 0) || (queue_length(&io) > 0) || (queue_length(&pending) > 0);
+    return (queue_length(&ready_queue) > 0) || (queue_length(&io_queue) > 0) || (queue_length(&arrival_queue) > 0);
 }
 
 
@@ -115,7 +115,7 @@ int scheduler_is_active() {
  * Parses a character stream into a queue of Processes.
  * A process is describe with 5 space separated integers:
  * "[Arrival_time] [PID] [cpu_time] [io_time] [repeats]"
- * pushes all the new processes in the pending queue.
+ * pushes all the new processes in the arrival queue.
  *
  * @param input stream containing the processes descriptions.
  */
@@ -126,14 +126,14 @@ void load_process_descriptions(FILE* input) {
     unsigned int arrival;
 
     init_process(&process);
-    init_queue(&pending, sizeof(Process), FALSE, process_compare, FALSE);
+    init_queue(&arrival_queue, sizeof(Process), FALSE, process_compare, FALSE);
     arrival = 0;
 
     while (fscanf(input, "%u", &arrival) != EOF) {
         fscanf(input, "%d %d %d %d", &pid, &behaviour.cpu_time, &behaviour.io_time, &behaviour.repeats);
 
         if (!is_first && process.pid != pid) {
-            add_to_queue(&pending, &process, process.arrival_time);
+            add_to_queue(&arrival_queue, &process, process.arrival_time);
             init_process(&process);
         }
 
@@ -143,14 +143,14 @@ void load_process_descriptions(FILE* input) {
         add_to_queue(&process.behaviours, &behaviour, 1);
     }
 
-    add_to_queue(&pending, &process, process.arrival_time);
+    add_to_queue(&arrival_queue, &process, process.arrival_time);
 }
 
 
 /**
  * @brief Queue processes to CPU
- * At current clock time, pull all the processes from the pending and
- * io queue and push them in the run queue.
+ * At current clock time, pull all the processes from the arrival and
+ * io queue and push them in the ready queue.
  * New processes are set with the highest priority by default.
  * Processes leaving io return to their previous priority stored in
  * the priority_cache property.
@@ -158,17 +158,17 @@ void load_process_descriptions(FILE* input) {
 void queue_new_processes() {
     Process process;
 
-    // schedule pending processes.
-    while (queue_length(&pending) > 0 && current_priority(&pending) <= mlqfs_clock) {
-        remove_from_front(&pending, &process);
-        add_to_queue(&run, &process, MAX_PRIORITY);
+    // schedule arrival processes.
+    while (queue_length(&arrival_queue) > 0 && current_priority(&arrival_queue) <= mlqfs_clock) {
+        remove_from_front(&arrival_queue, &process);
+        add_to_queue(&ready_queue, &process, MAX_PRIORITY);
         fprintf(output, "CREATE:\tProcess %d entered the ready queue at time %d.\n", process.pid, mlqfs_clock);
     }
 
     // return io processes to cpu.
-    while (queue_length(&io) > 0 && current_priority(&io) <= mlqfs_clock) {
-        remove_from_front(&io, &process);
-        add_to_queue(&run, &process, process.priority_cache);
+    while (queue_length(&io_queue) > 0 && current_priority(&io_queue) <= mlqfs_clock) {
+        remove_from_front(&io_queue, &process);
+        add_to_queue(&ready_queue, &process, process.priority_cache);
         fprintf(output, "QUEUED:\tProcess %d queued at level %d at time %u.\n", process.pid, process.priority_cache + 1, mlqfs_clock);
     }
 }
@@ -176,7 +176,7 @@ void queue_new_processes() {
 
 /**
  * @brief Send top process to io
- * Remove the current process form the run queue and pushes it in the io queue.
+ * Remove the current process form the ready queue and pushes it in the io queue.
  * Resets quanta and unit counters, and increment progress and promotion counters.
  * If the promotion counter reaches the priority's Promotion ceiling, the process
  * is promoted to the next highest priority.
@@ -185,15 +185,15 @@ void queue_new_processes() {
 void send_process_to_io() {
     Process process;
     Behaviour behaviour;
-    int priority = current_priority(&run);
-    remove_from_front(&run, &process);
+    int priority = current_priority(&ready_queue);
+    remove_from_front(&ready_queue, &process);
     peek_at_current(&process.behaviours, &behaviour);
 
     process.promotion ++;
     process.demotion = 0;
 
     // promote process
-    if (process.promotion >= PROMOTION[priority]) {
+    if (process.promotion >= PROMOTION_THRESHOLD[priority]) {
         process.promotion = 0;
         if (priority != MAX_PRIORITY) { priority --; }
     }
@@ -205,7 +205,7 @@ void send_process_to_io() {
     process.units = 0;
     process.quanta = 0;
 
-    add_to_queue(&io, &process, mlqfs_clock + behaviour.io_time);
+    add_to_queue(&io_queue, &process, mlqfs_clock + behaviour.io_time);
     fprintf(output, "I/O:\tProcess %d blocked for I/O at time %u.\n", process.pid, mlqfs_clock);
 }
 
@@ -219,19 +219,19 @@ void send_process_to_io() {
  */
 void halt_process() {
     Process process;
-    int priority = current_priority(&run);
-    remove_from_front(&run, &process);
+    int priority = current_priority(&ready_queue);
+    remove_from_front(&ready_queue, &process);
     process.demotion ++;
     process.promotion = 0;
     process.quanta = 0;
 
     // demote process
-    if (process.demotion >= DEMOTION[priority]) {
+    if (process.demotion >= DEMOTION_THRESHOLD[priority]) {
         process.demotion = 0;
         if (priority != MIN_PRIORITY) { priority ++; }
     }
 
-    add_to_queue(&run, &process, priority);
+    add_to_queue(&ready_queue, &process, priority);
     fprintf(output, "QUEUED:\tProcess %d queued at level %d at time %u.\n", process.pid, priority + 1, mlqfs_clock);
 }
 
@@ -239,19 +239,19 @@ void halt_process() {
 /**
  * @brief Terminate currently running process
  * called when the current process has finished all its cpu cycles.
- * Removes the process from the run queue and free the behaviour queue.
+ * Removes the process from the ready queue and free the behaviour queue.
  */
 void terminate_process() {
     Process process;
-    remove_from_front(&run, &process);
+    remove_from_front(&ready_queue, &process);
     destroy_queue(&process.behaviours);
-    add_to_queue(&report, &process, process.total_cpu_usage);
+    add_to_queue(&logs, &process, process.total_cpu_usage);
     fprintf(output, "FINISHED:\tProcess %d finished at time %u.\n", process.pid, mlqfs_clock);
 }
 
 
 /**
- * @brief Updates the run queue so the top process is the one who deserves CPU access the most.
+ * @brief Updates the ready queue so the top process is the one who deserves CPU access the most.
  */
 void schedule_processes() {
     Process process;
@@ -259,9 +259,9 @@ void schedule_processes() {
     int priority;
 
     // looks at the top process, and while it's not eligible for a cpu unit, it will be rescheduled.
-    while (queue_length(&run) > 0) {
-        peek_at_current(&run, &process);
-        priority = current_priority(&run);
+    while (queue_length(&ready_queue) > 0) {
+        peek_at_current(&ready_queue, &process);
+        priority = current_priority(&ready_queue);
         peek_at_current(&process.behaviours, &behaviour);
 
         // Process should be terminated
@@ -276,7 +276,7 @@ void schedule_processes() {
         else if (queue_length(&process.behaviours) > 1 && process.progress >= behaviour.repeats) {
             remove_from_front(&process.behaviours, &behaviour);
             process.progress = 0;
-            update_current(&run, &process);
+            update_current(&ready_queue, &process);
         }
 
 
@@ -286,8 +286,8 @@ void schedule_processes() {
         }
 
 
-        // Process has consumed its quantas
-        else if (process.quanta >= QUANTUM[priority]) {
+        // Process has consumed its quanta
+        else if (process.quanta >= QUANTUM_THRESHOLD[priority]) {
             halt_process();
         }
 
@@ -311,7 +311,7 @@ void schedule_processes() {
  * Increments unit, quanta, and total cpu usage counters.
  */
 void run_top_process() {
-    if (queue_length(&run) == 0) {
+    if (queue_length(&ready_queue) == 0) {
         // Run null process
         null.total_cpu_usage ++;
     }
@@ -319,7 +319,7 @@ void run_top_process() {
     else {
         // get process
         Process current;
-        peek_at_current(&run, &current);
+        peek_at_current(&ready_queue, &current);
 
         // Update counters
         current.units ++;
@@ -327,7 +327,7 @@ void run_top_process() {
         current.total_cpu_usage ++;
 
         // save changes
-        update_current(&run, &current);
+        update_current(&ready_queue, &current);
     }
 }
 
@@ -338,16 +338,16 @@ void run_top_process() {
 void print_report() {
     Process process;
     fprintf(output, "\nTotal CPU usage for all processes scheduled:\n\n");
-    while (queue_length(&report) != 0) {
+    while (queue_length(&logs) != 0) {
         fprintf(output, "Process ");
-        remove_from_front(&report, &process);
+        remove_from_front(&logs, &process);
         switch (process.pid) {
             case 0: fprintf(output, "<<null>> "); break;
             default: fprintf(output, "%d ", process.pid); break;
         }
         fprintf(output, ":\t%d time units.\n", process.total_cpu_usage);
     }
-    destroy_queue(&report);
+    destroy_queue(&logs);
 }
 
 
