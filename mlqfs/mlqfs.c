@@ -156,7 +156,13 @@ void load_process_descriptions(FILE* input) {
  * the priority_cache property.
  */
 void queue_new_processes() {
-    Process process;
+    Process process, previous_active = null;
+
+    // save current active process pid
+    if (queue_length(&ready_queue) > 0) {
+        peek_at_current(&ready_queue, &previous_active);
+        previous_active.priority_cache = current_priority(&ready_queue);
+    }
 
     // schedule arrival processes.
     while (queue_length(&arrival_queue) > 0 && current_priority(&arrival_queue) <= mlqfs_clock) {
@@ -169,7 +175,16 @@ void queue_new_processes() {
     while (queue_length(&io_queue) > 0 && current_priority(&io_queue) <= mlqfs_clock) {
         remove_from_front(&io_queue, &process);
         add_to_queue(&ready_queue, &process, process.priority_cache);
-        fprintf(output, "QUEUED:\tProcess %d queued at level %d at time %u.\n", process.pid, process.priority_cache + 1, mlqfs_clock);
+        // log queueing when leaving io
+        //        fprintf(output, "QUEUED:\tProcess %d queued at levelf %d at time %u.\n", process.pid, process.priority_cache + 1, mlqfs_clock);
+    }
+
+    // log preemption
+    if (queue_length(&ready_queue) > 0 && previous_active.pid != null.pid) {
+        peek_at_current(&ready_queue, &process);
+        if (previous_active.pid != process.pid) {
+            fprintf(output, "QUEUED:\tProcess %d queued at level %d at time %u.\n", previous_active.pid, previous_active.priority_cache + 1, mlqfs_clock);
+        }
     }
 }
 
