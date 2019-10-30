@@ -12,8 +12,8 @@
 #define MIN_PRIORITY 2
 
 static const int QUANTUM_THRESHOLD[3] = { 10, 30, 100 };
-static const int DEMOTION_THRESHOLD[3] = { 1, 2, 0 };
-static const int PROMOTION_THRESHOLD[3] = { 0, 2, 1 };
+static const int DEMOTION_THRESHOLD[3] = { 1, 2, 'X' };
+static const int PROMOTION_THRESHOLD[3] = { 'X', 2, 1 };
 
 static Queue ready_queue;       // Processes waiting for CPU time.
 static Queue io_queue;        // Processes in IO. 
@@ -28,6 +28,8 @@ static unsigned int mlqfs_clock = 0;
 
 // Stream output
 static FILE* output = NULL;
+
+static Process running;
 
 
 /**
@@ -168,7 +170,7 @@ void queue_new_processes() {
     while (queue_length(&arrival_queue) > 0 && current_priority(&arrival_queue) <= mlqfs_clock) {
         remove_from_front(&arrival_queue, &process);
         add_to_queue(&ready_queue, &process, MAX_PRIORITY);
-        fprintf(output, "CREATE:\tProcess %d entered the ready queue at time %d.\n", process.pid, mlqfs_clock);
+        fprintf(output, "CREATE: Process %d entered the ready queue at time %d.\n", process.pid, mlqfs_clock);
     }
 
     // return io processes to cpu.
@@ -176,14 +178,14 @@ void queue_new_processes() {
         remove_from_front(&io_queue, &process);
         add_to_queue(&ready_queue, &process, process.priority_cache);
         // log queueing when leaving io
-        //        fprintf(output, "QUEUED:\tProcess %d queued at levelf %d at time %u.\n", process.pid, process.priority_cache + 1, mlqfs_clock);
+        fprintf(output, "QUEUED: Process %d queued at level %d at time %u.\n", process.pid, process.priority_cache + 1, mlqfs_clock);
     }
 
     // log preemption
     if (queue_length(&ready_queue) > 0 && previous_active.pid != null.pid) {
         peek_at_current(&ready_queue, &process);
         if (previous_active.pid != process.pid) {
-            fprintf(output, "QUEUED:\tProcess %d queued at level %d at time %u.\n", previous_active.pid, previous_active.priority_cache + 1, mlqfs_clock);
+            fprintf(output, "QUEUED: Process %d queued at level %d at time %u.\n", previous_active.pid, previous_active.priority_cache + 1, mlqfs_clock);
         }
     }
 }
@@ -221,7 +223,7 @@ void send_process_to_io() {
     process.quanta = 0;
 
     add_to_queue(&io_queue, &process, mlqfs_clock + behaviour.io_time);
-    fprintf(output, "I/O:\tProcess %d blocked for I/O at time %u.\n", process.pid, mlqfs_clock);
+    fprintf(output, "I/O: Process %d blocked for I/O at time %u.\n", process.pid, mlqfs_clock);
 }
 
 
@@ -247,7 +249,7 @@ void halt_process() {
     }
 
     add_to_queue(&ready_queue, &process, priority);
-    fprintf(output, "QUEUED:\tProcess %d queued at level %d at time %u.\n", process.pid, priority + 1, mlqfs_clock);
+    fprintf(output, "QUEUED: Process %d queued at level %d at time %u.\n", process.pid, priority + 1, mlqfs_clock);
 }
 
 
@@ -261,7 +263,7 @@ void terminate_process() {
     remove_from_front(&ready_queue, &process);
     destroy_queue(&process.behaviours);
     add_to_queue(&logs, &process, process.total_cpu_usage);
-    fprintf(output, "FINISHED:\tProcess %d finished at time %u.\n", process.pid, mlqfs_clock);
+    fprintf(output, "FINISHED: Process %d finished at time %u.\n", process.pid, mlqfs_clock);
 }
 
 
@@ -301,22 +303,19 @@ void schedule_processes() {
         }
 
 
-        // Process has consumed its quanta
-        else if (process.quanta >= QUANTUM_THRESHOLD[priority]) {
-            halt_process();
-        }
-
-
         // Process is elegible for cpu access.
         else {
             // process is starting a new cpu cycle
-            if (process.quanta == 0) {
+            if (process.quanta == 0 || process.pid != running.pid) {
                 int time_left = behaviour.cpu_time - process.units;
-                fprintf(output, "RUN:\tProcess %d started execution from level %d at time %u; wants to execute for %u ticks.\n", process.pid, priority + 1, mlqfs_clock, time_left);
+                fprintf(output, "RUN: Process %d started execution from level %d at time %u; wants to execute for %u ticks.\n", process.pid, priority + 1, mlqfs_clock, time_left);
             }
+            running = process;
             return;
         }
     }
+
+    running = null;
 }
 
 
@@ -333,16 +332,36 @@ void run_top_process() {
 
     else {
         // get process
-        Process current;
-        peek_at_current(&ready_queue, &current);
+        Process process;
+        peek_at_current(&ready_queue, &process);
 
         // Update counters
-        current.units ++;
-        current.quanta ++;
-        current.total_cpu_usage ++;
+        process.units ++;
+        process.total_cpu_usage ++;
 
         // save changes
-        update_current(&ready_queue, &current);
+        update_current(&ready_queue, &process);
+    }
+}
+
+
+void check_top_process_quanta() {
+    if (queue_length(&ready_queue) == 0) {
+        // No quantum limits on null process.
+        return;
+    }
+
+
+    // get process
+    Process process;
+    peek_at_current(&ready_queue, &process);
+    process.quanta ++;
+    update_current(&ready_queue, &process);
+    int priority = current_priority(&ready_queue);
+
+    // Process has consumed its quanta
+    if (process.quanta >= QUANTUM_THRESHOLD[priority]) {
+        halt_process();
     }
 }
 
@@ -360,7 +379,7 @@ void print_report() {
             case 0: fprintf(output, "<<null>> "); break;
             default: fprintf(output, "%d ", process.pid); break;
         }
-        fprintf(output, ":\t%d time units.\n", process.total_cpu_usage);
+        fprintf(output, ": %d time units.\n", process.total_cpu_usage);
     }
     destroy_queue(&logs);
 }
@@ -389,12 +408,13 @@ int main(int argc, const char * argv[]) {
 
     mlqfs_clock = 0;
     while (scheduler_is_active()) {
+        check_top_process_quanta();
         queue_new_processes();
         schedule_processes();
         run_top_process();
         mlqfs_clock ++;
     }
-
+    mlqfs_clock --;
     shutdown_scheduler();
     // --- END SCHEDULER ---
 
